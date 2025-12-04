@@ -39,6 +39,18 @@ from .lstm_model import (
     train_lstm_models
 )
 
+from .behavioral_models import (
+    prepare_behavioral_data,
+    train_logistic_regression,
+    train_random_forest_classifier,
+    train_gradient_boosting_classifier,
+    evaluate_classifier,
+    plot_roc_curves,
+    plot_pr_curves,
+    plot_score_distributions,
+    train_behavioral_models
+)
+
 __all__ = [
     'calculate_metrics',
     'train_test_split_ts',
@@ -62,6 +74,15 @@ __all__ = [
     'train_lstm',
     'predict_lstm',
     'plot_forecast_vs_actual',
-    'train_lstm_models'
+    'train_lstm_models',
+    'prepare_behavioral_data',
+    'train_logistic_regression',
+    'train_random_forest_classifier',
+    'train_gradient_boosting_classifier',
+    'evaluate_classifier',
+    'plot_roc_curves',
+    'plot_pr_curves',
+    'plot_score_distributions',
+    'train_behavioral_models'
 ]
 

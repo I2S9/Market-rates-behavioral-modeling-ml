@@ -1,0 +1,18 @@
+{
+  "LogisticRegression": {
+    "AUC": 0.625777663480321,
+    "Average Precision": 0.21874027404479063
+  },
+  "RandomForest": {
+    "AUC": 0.6554164227206319,
+    "Average Precision": 0.2519013505700323
+  },
+  "GradientBoosting": {
+    "AUC": 0.613448585295389,
+    "Average Precision": 0.21883390039428438
+  },
+  "XGBoost": {
+    "AUC": 0.6271578964647431,
+    "Average Precision": 0.23278780729860216
+  }
+}
