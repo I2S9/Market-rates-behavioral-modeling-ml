@@ -41,7 +41,7 @@ def load_to_sql(
     
     # Auto-detect if first column is a date index
     if index is None:
-        if first_col in ['date', 'Date', 'DATE'] or 'Unnamed: 0' in first_col:
+        if (first_col in ['date', 'Date', 'DATE'] or 'Unnamed: 0' in first_col):
             df = pd.read_csv(csv_path, index_col=0, parse_dates=True)
             df.index.name = 'date'
             df = df.reset_index()
@@ -50,10 +50,11 @@ def load_to_sql(
             df = pd.read_csv(csv_path)
             index = False
     else:
-        if index and first_col in ['date', 'Date', 'DATE'] or 'Unnamed: 0' in first_col:
+        if index and (first_col in ['date', 'Date', 'DATE'] or 'Unnamed: 0' in first_col):
             df = pd.read_csv(csv_path, index_col=0, parse_dates=True)
             df.index.name = 'date'
             df = df.reset_index()
+            index = False
         else:
             df = pd.read_csv(csv_path)
     
