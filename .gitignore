@@ -47,6 +47,12 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+data/database.db
+
 # Model artifacts
 models/*.pkl
 models/*.joblib
