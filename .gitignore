@@ -46,6 +46,7 @@ data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+!data/processed/rates_clean.csv
 
 # Database files
 *.db

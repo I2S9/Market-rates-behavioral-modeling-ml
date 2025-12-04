@@ -57,6 +57,7 @@ def load_to_sql(
             index = False
         else:
             df = pd.read_csv(csv_path)
+            index = False
     
     conn = sqlite3.connect(db_path)
     try:

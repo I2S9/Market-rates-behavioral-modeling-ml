@@ -270,7 +270,8 @@ def preprocess_rates(
     for col in df.columns:
         result = test_stationarity(df[col])
         status = "✓" if result['is_stationary'] else "✗"
-        print(f"  {status} {col}: {result['message']} (p-value: {result['p_value']:.4f})")
+        p_value_str = f"{result['p_value']:.4f}" if result['p_value'] is not None else "N/A"
+        print(f"  {status} {col}: {result['message']} (p-value: {p_value_str})")
     
     if normalize:
         print(f"\nNormalizing data using {normalize_method}...")
