@@ -1,0 +1,11 @@
+{
+  "target": "DGS30",
+  "model": "XGBoost",
+  "overall_rmse": 0.0056934978471184,
+  "mean_rolling_rmse": 0.004996364602601371,
+  "std_rolling_rmse": 0.0023100920351869915,
+  "stability_index": 0.6838286849439078,
+  "features_with_drift": 25,
+  "total_features": 53,
+  "drift_rate": 0.4716981132075472
+}

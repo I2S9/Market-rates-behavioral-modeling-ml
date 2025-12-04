@@ -1,0 +1,11 @@
+{
+  "target": "DFF",
+  "model": "RandomForest",
+  "overall_rmse": 0.009177027204190676,
+  "mean_rolling_rmse": 0.008418817283171244,
+  "std_rolling_rmse": 0.002915931092965253,
+  "stability_index": 0.7427440847845649,
+  "features_with_drift": 25,
+  "total_features": 53,
+  "drift_rate": 0.4716981132075472
+}

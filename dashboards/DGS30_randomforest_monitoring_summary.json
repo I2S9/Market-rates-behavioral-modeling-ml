@@ -1,0 +1,11 @@
+{
+  "target": "DGS30",
+  "model": "RandomForest",
+  "overall_rmse": 0.007334460428911024,
+  "mean_rolling_rmse": 0.006310800183287554,
+  "std_rolling_rmse": 0.0032216277046083763,
+  "stability_index": 0.6620349286982153,
+  "features_with_drift": 25,
+  "total_features": 53,
+  "drift_rate": 0.4716981132075472
+}

@@ -1,0 +1,11 @@
+{
+  "target": "DFF",
+  "model": "XGBoost",
+  "overall_rmse": 0.007523663634353051,
+  "mean_rolling_rmse": 0.00697554018364479,
+  "std_rolling_rmse": 0.002225278687846849,
+  "stability_index": 0.7581434115004562,
+  "features_with_drift": 25,
+  "total_features": 53,
+  "drift_rate": 0.4716981132075472
+}
