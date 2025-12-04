@@ -28,6 +28,17 @@ from .ml_models import (
     train_ml_models
 )
 
+from .lstm_model import (
+    LSTMModel,
+    TimeSeriesDataset,
+    create_sequences,
+    prepare_lstm_data,
+    train_lstm,
+    predict_lstm,
+    plot_forecast_vs_actual,
+    train_lstm_models
+)
+
 __all__ = [
     'calculate_metrics',
     'train_test_split_ts',
@@ -43,6 +54,14 @@ __all__ = [
     'train_lightgbm',
     'get_feature_importance',
     'calculate_metrics_ml',
-    'train_ml_models'
+    'train_ml_models',
+    'LSTMModel',
+    'TimeSeriesDataset',
+    'create_sequences',
+    'prepare_lstm_data',
+    'train_lstm',
+    'predict_lstm',
+    'plot_forecast_vs_actual',
+    'train_lstm_models'
 ]
 
