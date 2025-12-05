@@ -396,3 +396,4 @@ if __name__ == "__main__":
             metrics = model_data['metrics']
             print(f"  {model_name}: RMSE={metrics['RMSE']:.4f}, MAE={metrics['MAE']:.4f}")
 
+

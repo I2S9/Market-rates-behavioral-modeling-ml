@@ -149,3 +149,4 @@ def generate_multiple_series(output_dir: str = "data/raw") -> None:
 if __name__ == "__main__":
     generate_multiple_series()
 
+

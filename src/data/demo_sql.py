@@ -30,3 +30,4 @@ print(result)
 print("\n" + "=" * 60)
 print("All queries executed successfully!")
 
+
