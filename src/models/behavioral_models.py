@@ -36,17 +36,7 @@ def prepare_behavioral_data(
     target_col: str,
     exclude_cols: Optional[List[str]] = None
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    """
-    Prepare features and target for behavioral modeling.
-    
-    Args:
-        df: DataFrame with behavioral features and target
-        target_col: Name of target column (outflow_event or early_repayment_event)
-        exclude_cols: Columns to exclude from features
-        
-    Returns:
-        Tuple of (X, y) where X is features and y is target
-    """
+    """Prepare features and target for behavioral modeling."""
     if exclude_cols is None:
         exclude_cols = []
     
@@ -107,17 +97,7 @@ def train_logistic_regression(
     y_train: pd.Series,
     random_state: int = 42
 ) -> Tuple[LogisticRegression, Dict]:
-    """
-    Train Logistic Regression baseline model.
-    
-    Args:
-        X_train: Training features
-        y_train: Training target
-        random_state: Random seed
-        
-    Returns:
-        Tuple of (fitted model, model info)
-    """
+    """Train Logistic Regression baseline model."""
     model = LogisticRegression(
         random_state=random_state,
         max_iter=1000,
@@ -141,19 +121,7 @@ def train_random_forest_classifier(
     max_depth: Optional[int] = None,
     random_state: int = 42
 ) -> Tuple[RandomForestClassifier, Dict]:
-    """
-    Train Random Forest Classifier.
-    
-    Args:
-        X_train: Training features
-        y_train: Training target
-        n_estimators: Number of trees
-        max_depth: Maximum tree depth
-        random_state: Random seed
-        
-    Returns:
-        Tuple of (fitted model, model info)
-    """
+    """Train Random Forest Classifier."""
     model = RandomForestClassifier(
         n_estimators=n_estimators,
         max_depth=max_depth,
@@ -181,20 +149,7 @@ def train_gradient_boosting_classifier(
     learning_rate: float = 0.1,
     random_state: int = 42
 ) -> Tuple[GradientBoostingClassifier, Dict]:
-    """
-    Train Gradient Boosting Classifier.
-    
-    Args:
-        X_train: Training features
-        y_train: Training target
-        n_estimators: Number of boosting rounds
-        max_depth: Maximum tree depth
-        learning_rate: Learning rate
-        random_state: Random seed
-        
-    Returns:
-        Tuple of (fitted model, model info)
-    """
+    """Train Gradient Boosting Classifier."""
     model = GradientBoostingClassifier(
         n_estimators=n_estimators,
         max_depth=max_depth,
@@ -420,7 +375,6 @@ def train_behavioral_models(
         print(f"Target distribution: {y.value_counts().to_dict()}")
         print(f"Positive class rate: {y.mean()*100:.2f}%")
         
-        # Split data (stratified to maintain class distribution)
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=test_size, random_state=42, stratify=y
         )

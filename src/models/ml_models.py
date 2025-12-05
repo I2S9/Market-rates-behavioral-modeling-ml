@@ -7,13 +7,23 @@ to compare with baseline statistical models.
 
 import pandas as pd
 import numpy as np
+import json
+import warnings
 from pathlib import Path
 from typing import Dict, Tuple, Optional, List
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-import warnings
-import json
+
 warnings.filterwarnings('ignore')
+
+try:
+    from ..utils.constants import (
+        RANDOM_SEED, DEFAULT_TARGET_COLUMNS, DEFAULT_N_ESTIMATORS
+    )
+except ImportError:
+    RANDOM_SEED = 42
+    DEFAULT_TARGET_COLUMNS = ['DGS10', 'DFF', 'DGS30']
+    DEFAULT_N_ESTIMATORS = 300
 
 # XGBoost
 try:
@@ -39,17 +49,7 @@ def prepare_ml_data(
     target_col: str,
     exclude_cols: Optional[List[str]] = None
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    """
-    Prepare features and target for ML models.
-    
-    Args:
-        df: DataFrame with features and target
-        target_col: Name of target column
-        exclude_cols: Columns to exclude from features
-        
-    Returns:
-        Tuple of (X, y) where X is features and y is target
-    """
+    """Prepare features and target for ML models."""
     if exclude_cols is None:
         exclude_cols = []
     
@@ -99,23 +99,11 @@ def train_test_split_ts_ml(
 def train_random_forest(
     X_train: pd.DataFrame,
     y_train: pd.Series,
-    n_estimators: int = 300,
+    n_estimators: int = DEFAULT_N_ESTIMATORS,
     max_depth: Optional[int] = None,
-    random_state: int = 42
+    random_state: int = RANDOM_SEED
 ) -> Tuple[RandomForestRegressor, Dict]:
-    """
-    Train Random Forest model.
-    
-    Args:
-        X_train: Training features
-        y_train: Training target
-        n_estimators: Number of trees
-        max_depth: Maximum tree depth
-        random_state: Random seed
-        
-    Returns:
-        Tuple of (fitted model, model info)
-    """
+    """Train Random Forest model."""
     model = RandomForestRegressor(
         n_estimators=n_estimators,
         max_depth=max_depth,
@@ -140,7 +128,7 @@ def train_xgboost(
     n_estimators: int = 300,
     max_depth: int = 6,
     learning_rate: float = 0.1,
-    random_state: int = 42
+    random_state: int = RANDOM_SEED
 ) -> Tuple[Optional[object], Dict]:
     """
     Train XGBoost model.
@@ -189,7 +177,7 @@ def train_lightgbm(
     n_estimators: int = 300,
     max_depth: int = 6,
     learning_rate: float = 0.1,
-    random_state: int = 42
+    random_state: int = RANDOM_SEED
 ) -> Tuple[Optional[object], Dict]:
     """
     Train LightGBM model.
@@ -287,6 +275,93 @@ def calculate_metrics_ml(y_true: pd.Series, y_pred: np.ndarray) -> Dict[str, flo
     }
 
 
+def _load_baseline_metrics(baseline_file: Path) -> Optional[Dict]:
+    """Load baseline metrics from JSON file."""
+    if not baseline_file.exists():
+        return None
+    with open(baseline_file, 'r') as f:
+        baseline_data = json.load(f)
+    best_baseline = min(baseline_data.items(), key=lambda x: x[1]['RMSE'])
+    return {
+        'best_model': best_baseline[0],
+        'RMSE': best_baseline[1]['RMSE'],
+        'MAE': best_baseline[1]['MAE']
+    }
+
+
+def _train_and_evaluate_model(
+    model_func, X_train, y_train, X_test, y_test,
+    model_name: str, baseline_metrics: Optional[Dict] = None
+) -> Optional[Dict]:
+    """Train and evaluate a single model."""
+    print(f"\n--- {model_name} ---")
+    model, info = model_func(X_train, y_train, n_estimators=DEFAULT_N_ESTIMATORS)
+    
+    if model is None:
+        print(f"  Error: {info.get('error', 'Unknown error')}")
+        return None
+    
+    y_pred = model.predict(X_test)
+    metrics = calculate_metrics_ml(y_test, y_pred)
+    print(f"  RMSE: {metrics['RMSE']:.4f}, MAE: {metrics['MAE']:.4f}")
+    
+    if baseline_metrics:
+        improvement = ((baseline_metrics['RMSE'] - metrics['RMSE']) /
+                      baseline_metrics['RMSE']) * 100
+        print(f"  vs Baseline: {improvement:+.2f}% RMSE improvement")
+    
+    feature_importance = get_feature_importance(
+        model, X_train.columns.tolist(), model_name.lower().replace(' ', '_')
+    )
+    
+    return {
+        'model': model,
+        'predictions': y_pred,
+        'metrics': metrics,
+        'model_info': info,
+        'feature_importance': feature_importance
+    }
+
+
+def _save_results(
+    col_results: Dict, y_test: pd.Series, target_col: str, output_path: Path
+):
+    """Save predictions, metrics, and feature importance."""
+    print(f"\n--- Saving Results ---")
+    
+    # Save predictions
+    predictions_df = pd.DataFrame({
+        'date': y_test.index,
+        'actual': y_test.values
+    }, index=y_test.index)
+    
+    for model_name in ['RandomForest', 'XGBoost', 'LightGBM']:
+        if model_name in col_results:
+            pred_col = f"{model_name.lower()}_pred"
+            predictions_df[pred_col] = col_results[model_name]['predictions']
+    
+    pred_file = output_path / f"{target_col}_ml_predictions.csv"
+    predictions_df.to_csv(pred_file)
+    print(f"  Saved predictions to {pred_file}")
+    
+    # Save metrics
+    metrics_summary = {
+        name: data['metrics'] for name, data in col_results.items()
+    }
+    metrics_file = output_path / f"{target_col}_ml_metrics.json"
+    with open(metrics_file, 'w') as f:
+        json.dump(metrics_summary, f, indent=2)
+    print(f"  Saved metrics to {metrics_file}")
+    
+    # Save feature importance
+    for model_name, model_data in col_results.items():
+        if 'feature_importance' in model_data:
+            importance_file = (output_path /
+                              f"{target_col}_{model_name.lower()}_feature_importance.csv")
+            model_data['feature_importance'].to_csv(importance_file, index=False)
+            print(f"  Saved {model_name} feature importance to {importance_file}")
+
+
 def train_ml_models(
     features_path: str = "data/processed/rates_features.csv",
     target_columns: Optional[List[str]] = None,
@@ -294,19 +369,7 @@ def train_ml_models(
     baseline_metrics_path: str = "reports",
     output_dir: str = "reports"
 ) -> Dict:
-    """
-    Train ML models and compare with baseline.
-    
-    Args:
-        features_path: Path to features CSV
-        target_columns: List of target columns to forecast
-        test_size: Proportion of data for testing
-        baseline_metrics_path: Path to baseline metrics JSON files
-        output_dir: Directory to save results
-        
-    Returns:
-        Dictionary with model results
-    """
+    """Train ML models and compare with baseline."""
     print("="*60)
     print("Training Machine Learning Models")
     print("="*60)
@@ -317,7 +380,7 @@ def train_ml_models(
     print(f"  Loaded {len(df)} rows, {len(df.columns)} columns")
     
     if target_columns is None:
-        target_columns = ['DGS10', 'DFF', 'DGS30']
+        target_columns = DEFAULT_TARGET_COLUMNS
     
     # Create output directory
     output_path = Path(output_dir)
@@ -344,136 +407,39 @@ def train_ml_models(
         
         col_results = {}
         
-        # Load baseline metrics for comparison
+        # Load baseline metrics
         baseline_file = Path(baseline_metrics_path) / f"{target_col}_metrics.json"
-        baseline_metrics = {}
-        if baseline_file.exists():
-            with open(baseline_file, 'r') as f:
-                baseline_data = json.load(f)
-                # Get best baseline (lowest RMSE)
-                best_baseline = min(baseline_data.items(), key=lambda x: x[1]['RMSE'])
-                baseline_metrics = {
-                    'best_model': best_baseline[0],
-                    'RMSE': best_baseline[1]['RMSE'],
-                    'MAE': best_baseline[1]['MAE']
-                }
-                print(f"\nBaseline metrics: {baseline_metrics['best_model']} - RMSE={baseline_metrics['RMSE']:.4f}, MAE={baseline_metrics['MAE']:.4f}")
-        
-        # Random Forest
-        print(f"\n--- Random Forest ---")
-        rf_model, rf_info = train_random_forest(X_train, y_train, n_estimators=300)
-        y_pred_rf = rf_model.predict(X_test)
-        metrics_rf = calculate_metrics_ml(y_test, y_pred_rf)
-        print(f"  RMSE: {metrics_rf['RMSE']:.4f}")
-        print(f"  MAE: {metrics_rf['MAE']:.4f}")
-        
+        baseline_metrics = _load_baseline_metrics(baseline_file)
         if baseline_metrics:
-            improvement = ((baseline_metrics['RMSE'] - metrics_rf['RMSE']) / baseline_metrics['RMSE']) * 100
-            print(f"  vs Baseline: {improvement:+.2f}% RMSE improvement")
+            print(f"\nBaseline: {baseline_metrics['best_model']} - "
+                  f"RMSE={baseline_metrics['RMSE']:.4f}, "
+                  f"MAE={baseline_metrics['MAE']:.4f}")
         
-        # Feature importance
-        feature_importance_rf = get_feature_importance(rf_model, X_train.columns.tolist(), 'random_forest')
+        # Train models
+        rf_result = _train_and_evaluate_model(
+            train_random_forest, X_train, y_train, X_test, y_test,
+            'Random Forest', baseline_metrics
+        )
+        if rf_result:
+            col_results['RandomForest'] = rf_result
         
-        col_results['RandomForest'] = {
-            'model': rf_model,
-            'predictions': y_pred_rf,
-            'metrics': metrics_rf,
-            'model_info': rf_info,
-            'feature_importance': feature_importance_rf
-        }
-        
-        # XGBoost or LightGBM
         if HAS_XGBOOST:
-            print(f"\n--- XGBoost ---")
-            xgb_model, xgb_info = train_xgboost(X_train, y_train, n_estimators=300)
-            
-            if xgb_model is not None:
-                y_pred_xgb = xgb_model.predict(X_test)
-                metrics_xgb = calculate_metrics_ml(y_test, y_pred_xgb)
-                print(f"  RMSE: {metrics_xgb['RMSE']:.4f}")
-                print(f"  MAE: {metrics_xgb['MAE']:.4f}")
-                
-                if baseline_metrics:
-                    improvement = ((baseline_metrics['RMSE'] - metrics_xgb['RMSE']) / baseline_metrics['RMSE']) * 100
-                    print(f"  vs Baseline: {improvement:+.2f}% RMSE improvement")
-                
-                feature_importance_xgb = get_feature_importance(xgb_model, X_train.columns.tolist(), 'xgboost')
-                
-                col_results['XGBoost'] = {
-                    'model': xgb_model,
-                    'predictions': y_pred_xgb,
-                    'metrics': metrics_xgb,
-                    'model_info': xgb_info,
-                    'feature_importance': feature_importance_xgb
-                }
-            else:
-                print(f"  Error: {xgb_info.get('error', 'Unknown error')}")
-        
+            xgb_result = _train_and_evaluate_model(
+                train_xgboost, X_train, y_train, X_test, y_test,
+                'XGBoost', baseline_metrics
+            )
+            if xgb_result:
+                col_results['XGBoost'] = xgb_result
         elif HAS_LIGHTGBM:
-            print(f"\n--- LightGBM ---")
-            lgb_model, lgb_info = train_lightgbm(X_train, y_train, n_estimators=300)
-            
-            if lgb_model is not None:
-                y_pred_lgb = lgb_model.predict(X_test)
-                metrics_lgb = calculate_metrics_ml(y_test, y_pred_lgb)
-                print(f"  RMSE: {metrics_lgb['RMSE']:.4f}")
-                print(f"  MAE: {metrics_lgb['MAE']:.4f}")
-                
-                if baseline_metrics:
-                    improvement = ((baseline_metrics['RMSE'] - metrics_lgb['RMSE']) / baseline_metrics['RMSE']) * 100
-                    print(f"  vs Baseline: {improvement:+.2f}% RMSE improvement")
-                
-                feature_importance_lgb = get_feature_importance(lgb_model, X_train.columns.tolist(), 'lightgbm')
-                
-                col_results['LightGBM'] = {
-                    'model': lgb_model,
-                    'predictions': y_pred_lgb,
-                    'metrics': metrics_lgb,
-                    'model_info': lgb_info,
-                    'feature_importance': feature_importance_lgb
-                }
-            else:
-                print(f"  Error: {lgb_info.get('error', 'Unknown error')}")
-        else:
-            print(f"\n--- Gradient Boosting ---")
-            print("  XGBoost and LightGBM not available")
+            lgb_result = _train_and_evaluate_model(
+                train_lightgbm, X_train, y_train, X_test, y_test,
+                'LightGBM', baseline_metrics
+            )
+            if lgb_result:
+                col_results['LightGBM'] = lgb_result
         
-        # Save predictions
-        print(f"\n--- Saving Results ---")
-        predictions_df = pd.DataFrame({
-            'date': y_test.index,
-            'actual': y_test.values
-        }, index=y_test.index)
-        
-        if 'RandomForest' in col_results:
-            predictions_df['random_forest_pred'] = col_results['RandomForest']['predictions']
-        
-        if 'XGBoost' in col_results:
-            predictions_df['xgboost_pred'] = col_results['XGBoost']['predictions']
-        elif 'LightGBM' in col_results:
-            predictions_df['lightgbm_pred'] = col_results['LightGBM']['predictions']
-        
-        pred_file = output_path / f"{target_col}_ml_predictions.csv"
-        predictions_df.to_csv(pred_file)
-        print(f"  Saved predictions to {pred_file}")
-        
-        # Save metrics
-        metrics_summary = {}
-        for model_name, model_data in col_results.items():
-            metrics_summary[model_name] = model_data['metrics']
-        
-        metrics_file = output_path / f"{target_col}_ml_metrics.json"
-        with open(metrics_file, 'w') as f:
-            json.dump(metrics_summary, f, indent=2)
-        print(f"  Saved metrics to {metrics_file}")
-        
-        # Save feature importance for Power BI
-        for model_name, model_data in col_results.items():
-            if 'feature_importance' in model_data:
-                importance_df = model_data['feature_importance']
-                importance_file = output_path / f"{target_col}_{model_name.lower()}_feature_importance.csv"
-                importance_df.to_csv(importance_file, index=False)
-                print(f"  Saved {model_name} feature importance to {importance_file}")
+        # Save results
+        _save_results(col_results, y_test, target_col, output_path)
         
         results[target_col] = col_results
     

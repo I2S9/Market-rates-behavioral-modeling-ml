@@ -180,6 +180,25 @@ def calculate_model_stability_index(
     return min(stability, 1.0)
 
 
+def _find_prediction_column(pred_df: pd.DataFrame, model_name: str) -> str:
+    """Find prediction column matching model name."""
+    model_lower = model_name.lower()
+    for col in pred_df.columns:
+        col_lower = col.lower()
+        if model_lower in col_lower and 'pred' in col_lower:
+            if 'actual' not in col_lower:
+                return col
+    for col in pred_df.columns:
+        if 'pred' in col.lower() and 'actual' not in col.lower():
+            if ((model_lower == 'xgboost' and 'xgb' in col.lower()) or
+                (model_lower == 'randomforest' and 'random' in col.lower())):
+                return col
+    for col in pred_df.columns:
+        if 'pred' in col.lower() and 'actual' not in col.lower():
+            return col
+    raise ValueError(f"Could not find prediction column for {model_name}")
+
+
 def create_monitoring_dashboard(
     predictions_path: str,
     features_path: str,
@@ -188,20 +207,7 @@ def create_monitoring_dashboard(
     window_size: int = 30,
     output_dir: str = "dashboards"
 ) -> pd.DataFrame:
-    """
-    Create comprehensive monitoring dashboard data for Power BI.
-    
-    Args:
-        predictions_path: Path to predictions CSV
-        features_path: Path to features CSV
-        target_col: Target column name
-        model_name: Name of model to monitor
-        window_size: Rolling window size
-        output_dir: Directory to save dashboard data
-        
-    Returns:
-        DataFrame with all monitoring metrics ready for Power BI
-    """
+    """Create monitoring dashboard data for Power BI."""
     print("="*60)
     print(f"Creating Monitoring Dashboard for {target_col} - {model_name}")
     print("="*60)
@@ -210,39 +216,7 @@ def create_monitoring_dashboard(
     print(f"\nLoading predictions from {predictions_path}...")
     pred_df = pd.read_csv(predictions_path, index_col=0, parse_dates=True)
     
-    # Get prediction column
-    pred_col = None
-    # Try exact match first
-    model_lower = model_name.lower()
-    for col in pred_df.columns:
-        col_lower = col.lower()
-        if model_lower in col_lower and 'pred' in col_lower:
-            if 'actual' not in col_lower:
-                pred_col = col
-                break
-    
-    # If not found, try partial match
-    if pred_col is None:
-        for col in pred_df.columns:
-            col_lower = col.lower()
-            if 'pred' in col_lower and 'actual' not in col_lower:
-                # Check if model name matches (xgboost -> xgb, randomforest -> random)
-                if (model_lower == 'xgboost' and 'xgb' in col_lower) or \
-                   (model_lower == 'randomforest' and 'random' in col_lower) or \
-                   (model_lower == 'gradientboosting' and 'gradient' in col_lower):
-                    pred_col = col
-                    break
-    
-    # Last resort: take first prediction column
-    if pred_col is None:
-        for col in pred_df.columns:
-            if 'pred' in col.lower() and 'actual' not in col.lower():
-                pred_col = col
-                break
-    
-    if pred_col is None:
-        raise ValueError(f"Could not find prediction column for {model_name}")
-    
+    pred_col = _find_prediction_column(pred_df, model_name)
     print(f"  Found prediction column: {pred_col}")
     print(f"  Date range: {pred_df.index.min()} to {pred_df.index.max()}")
     
